@@ -257,10 +257,12 @@ export default function Overlay() {
     if (window.electronAPI?.onAIAgentExit) {
       window.electronAPI.onAIAgentExit(() => {
         setRunningThreadId(null);
-        window.electronAPI.expandOverlay(true);
-        setShowSuggestions(true);
+        // Collapse the overlay back to just the avatar when a task finishes,
+        // so the 'Ask NeuralAgent' suggestions panel doesn't block the view.
+        window.electronAPI.minimizeOverlay();
+        setExpanded(false);
+        setShowSuggestions(false);
         setSuggestions([]);
-        getSuggestions();
       });
     }
   }, []);

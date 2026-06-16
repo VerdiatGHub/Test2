@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import axios from '../utils/axios';
 import constants from '../utils/constants';
-import { setLoadingDialog, setError } from '../store';
+import { setLoadingDialog, setError, setHideSidebar } from '../store';
 import ChatMessage from '../components/ChatMessage';
 import { FlexSpacer } from '../components/Elements/SmallElements';
 import NATextArea from '../components/Elements/TextAreas';
@@ -254,6 +254,14 @@ export default function Thread() {
     getThread();
     getThreadMessages();
   }, [tid]);
+
+  useEffect(() => {
+    dispatch(setHideSidebar(thread?.status === 'standby' && messages.length > 0));
+  }, [thread?.status, messages.length, dispatch]);
+
+  useEffect(() => {
+    return () => { dispatch(setHideSidebar(false)); };
+  }, [dispatch]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });

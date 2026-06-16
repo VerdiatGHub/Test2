@@ -51,6 +51,13 @@ export function setSuccess(isSuccess, successMsg='') {
   };
 }
 
+export function setHideSidebar(hideSidebar) {
+  return {
+    type: 'SET_HIDE_SIDEBAR',
+    hideSidebar: hideSidebar,
+  };
+}
+
 const defaultState = {
   isAppLoading: true,
   isFullLoading: false,
@@ -61,6 +68,7 @@ const defaultState = {
   errorMessage: '',
   isSuccess: false,
   successMsg: '',
+  hideSidebar: false,
 }
 
 function reducer(state=defaultState, action) {
@@ -92,6 +100,9 @@ function reducer(state=defaultState, action) {
         newState.successMsg = action.successMsg;
       }
       newState.isSuccess = action.isSuccess;
+      return newState;
+    case 'SET_HIDE_SIDEBAR':
+      newState.hideSidebar = action.hideSidebar;
       return newState;
     default:
       break;

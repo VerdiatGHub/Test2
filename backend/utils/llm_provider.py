@@ -5,6 +5,7 @@ from botocore.config import Config
 from langchain_openai import ChatOpenAI, AzureChatOpenAI
 from langchain_aws import ChatBedrockConverse
 from langchain_anthropic import ChatAnthropic
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.language_models.chat_models import BaseChatModel
 
 load_dotenv()  # Load env variables from .env
@@ -121,6 +122,15 @@ def get_llm(agent: str, temperature: float = 0.0, max_tokens: int = None, thinki
                 config=boto3_config,
                 region_name=os.getenv("BEDROCK_REGION", "us-east-1")
             )
+
+    elif model_type == "google_genai":
+        return ChatGoogleGenerativeAI(
+            model=model_id,
+            temperature=temperature,
+            max_output_tokens=max_tokens,
+            max_retries=2,
+            google_api_key=os.getenv("GOOGLE_API_KEY"),
+        )
 
     else:
         raise ValueError(f"Unsupported model type '{model_type}' for agent '{agent}'")
