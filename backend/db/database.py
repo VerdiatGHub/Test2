@@ -10,7 +10,7 @@ DATABASE_URL = ('postgresql://' + os.getenv('DB_USERNAME') + ':' + os.getenv('DB
                 '@' + os.getenv('DB_HOST') + ':' + os.getenv('DB_PORT') + '/' + os.getenv('DB_DATABASE')) \
     if not os.getenv('DB_CONNECTION_STRING') else os.getenv('DB_CONNECTION_STRING')
 
-engine = create_engine(DATABASE_URL, echo=True)
+engine = create_engine(DATABASE_URL, echo=False, pool_size=10, max_overflow=20, pool_pre_ping=True)
 
 SessionLocal = sessionmaker(class_=Session, bind=engine, autocommit=False, autoflush=False)
 

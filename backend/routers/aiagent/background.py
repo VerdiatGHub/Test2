@@ -21,7 +21,6 @@ from utils import upload_helper
 router = APIRouter(
     prefix='/aiagent/background',
     tags=['aiagent', 'background'],
-    dependencies=[Depends(get_current_user_dependency)]
 )
 
 
@@ -195,7 +194,6 @@ def next_step(tid: str, next_step_req: BackgroundNextStepRequest, db: Session = 
     )
     db.add(ai_message)
     db.commit()
-    db.refresh(ai_message)
 
     if response_data.get('current_state', {}).get('save_to_memory', False):
         memory_text = response_data['current_state'].get('memory')
@@ -206,7 +204,6 @@ def next_step(tid: str, next_step_req: BackgroundNextStepRequest, db: Session = 
             )
             db.add(memory_entry)
             db.commit()
-            db.refresh(memory_entry)
 
     # Iterate over all actions
     actions_arr = response_data.get('actions', [])
@@ -216,46 +213,18 @@ def next_step(tid: str, next_step_req: BackgroundNextStepRequest, db: Session = 
         if action_type == 'task_completed' and len(actions_arr) == 1:
             task.status = ThreadTaskStatus.COMPLETED
             db.add(task)
-            db.commit()
-            db.refresh(task)
 
             instance.status = ThreadStatus.STANDBY
             db.add(instance)
             db.commit()
-            db.refresh(instance)
-
-            # ai_message = ThreadMessage(
-            #     thread_id=instance.id,
-            #     thread_task_id=task.id,
-            #     thread_chat_type=ThreadChatType.BACKGROUND_MODE_BROWSER,
-            #     thread_chat_from=ThreadChatFromChoices.FROM_AI,
-            #     text=json.dumps({'actions': [{'action': 'task_completed'}]}),
-            # )
-            # db.add(ai_message)
-            # db.commit()
-            # db.refresh(ai_message)
 
         elif action_type == 'task_failed':
             task.status = ThreadTaskStatus.FAILED
             db.add(task)
-            db.commit()
-            db.refresh(task)
 
             instance.status = ThreadStatus.STANDBY
             db.add(instance)
             db.commit()
-            db.refresh(instance)
-
-            # ai_message = ThreadMessage(
-            #     thread_id=instance.id,
-            #     thread_task_id=task.id,
-            #     thread_chat_type=ThreadChatType.BACKGROUND_MODE_BROWSER,
-            #     thread_chat_from=ThreadChatFromChoices.FROM_AI,
-            #     text=json.dumps({'actions': [{'action': 'task_failed'}]}),
-            # )
-            # db.add(ai_message)
-            # db.commit()
-            # db.refresh(ai_message)
 
         elif action_type == 'tool_use':
             tool = act['params'].get('tool')
@@ -268,7 +237,6 @@ def next_step(tid: str, next_step_req: BackgroundNextStepRequest, db: Session = 
                 )
                 db.add(memory_entry)
                 db.commit()
-                db.refresh(memory_entry)
 
             elif tool in ['read_pdf', 'fetch_url', 'summarize_youtube_video']:
                 tool_output_text = run_tool_server_side(tool, args)
@@ -278,6 +246,5 @@ def next_step(tid: str, next_step_req: BackgroundNextStepRequest, db: Session = 
                 )
                 db.add(memory_entry)
                 db.commit()
-                db.refresh(memory_entry)
 
     return response_data

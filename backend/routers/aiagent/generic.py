@@ -27,7 +27,6 @@ from utils import upload_helper
 router = APIRouter(
     prefix='/aiagent',
     tags=['aiagent'],
-    dependencies=[Depends(get_current_user_dependency)]
 )
 
 
@@ -61,7 +60,7 @@ def current_subtask_request(tid: str, current_subtask_request_obj: CurrentSubtas
             ThreadTask.thread.has(Thread.user_id == user.id),
             ThreadTask.thread.has(Thread.status != ThreadStatus.DELETED),
             ThreadTask.status != ThreadTaskStatus.WORKING,
-        )).order_by(ThreadTask.created_at.desc()).limit(10)).all()
+        )).order_by(ThreadTask.created_at.desc()).limit(3)).all()
         previous_tasks_arr = []
         for previous_task in previous_tasks:
             previous_tasks_arr.append({
@@ -111,8 +110,6 @@ def current_subtask_request(tid: str, current_subtask_request_obj: CurrentSubtas
             text=json.dumps(plan_response_data),
         )
         db.add(plan_ai_message)
-        db.commit()
-        db.refresh(plan_ai_message)
 
         current_plan = ThreadTaskPlan(
             thread_task_id=task.id,
@@ -121,18 +118,16 @@ def current_subtask_request(tid: str, current_subtask_request_obj: CurrentSubtas
         db.commit()
         db.refresh(current_plan)
 
+        # Batch all subtask inserts into a single commit
         for i, subtask_item in enumerate(plan):
             subtask = PlanSubtask(
                 thread_task_plan_id=current_plan.id,
                 subtask_text=subtask_item.get('subtask'),
                 subtask_type=SubtaskType.DESKTOP,
-                # subtask_type=SubtaskType.DESKTOP if subtask_item.get(
-                #     'type') == 'desktop_subtask' else SubtaskType.BROWSER,
                 ordering=i + 1,
             )
             db.add(subtask)
-            db.commit()
-            db.refresh(subtask)
+        db.commit()
 
     current_subtask = db.exec(select(PlanSubtask).where(and_(
         PlanSubtask.status == SubtaskStatus.ACTIVE,
@@ -140,20 +135,15 @@ def current_subtask_request(tid: str, current_subtask_request_obj: CurrentSubtas
     )).order_by(PlanSubtask.ordering.asc())).first()
 
     if not current_subtask:
+        # Batch all status updates into a single commit
         current_plan.status = ThreadTaskPlanStatus.COMPLETED
         db.add(current_plan)
-        db.commit()
-        db.refresh(current_plan)
 
         task.status = ThreadTaskStatus.COMPLETED
         db.add(task)
-        db.commit()
-        db.refresh(task)
 
         instance.status = ThreadStatus.STANDBY
         db.add(instance)
-        db.commit()
-        db.refresh(instance)
 
         ai_message = ThreadMessage(
             thread_id=instance.id,
@@ -164,7 +154,6 @@ def current_subtask_request(tid: str, current_subtask_request_obj: CurrentSubtas
         )
         db.add(ai_message)
         db.commit()
-        db.refresh(ai_message)
 
         return {'action': 'task_completed'}
 
@@ -251,7 +240,7 @@ def next_step(tid: str, next_step_req: NextStepRequest, db: Session = Depends(ge
             )
         )
         .order_by(ThreadMessage.created_at.desc())
-        .limit(5)
+        .limit(3)
     ).all()
     for previous_message in task_previous_messages:
         previous_action_dict = json.loads(previous_message.text)
@@ -262,7 +251,7 @@ def next_step(tid: str, next_step_req: NextStepRequest, db: Session = Depends(ge
         tasks_for_memory = db.exec(select(ThreadTask).where(and_(
             ThreadTask.thread.has(Thread.user_id == user.id),
             ThreadTask.thread.has(Thread.status != ThreadStatus.DELETED),
-        )).order_by(ThreadTask.created_at.desc()).limit(5)).all()
+        )).order_by(ThreadTask.created_at.desc()).limit(3)).all()
         tasks_for_memory_ids = [task.id for task in tasks_for_memory]
         memory_items = db.exec(
             select(ThreadTaskMemoryEntry).where(
@@ -359,7 +348,6 @@ def next_step(tid: str, next_step_req: NextStepRequest, db: Session = Depends(ge
     )
     db.add(ai_message)
     db.commit()
-    db.refresh(ai_message)
 
     if response_data.get('current_state', {}).get('save_to_memory', False):
         memory_text = response_data['current_state'].get('memory')
@@ -370,7 +358,6 @@ def next_step(tid: str, next_step_req: NextStepRequest, db: Session = Depends(ge
             )
             db.add(memory_entry)
             db.commit()
-            db.refresh(memory_entry)
 
     # Iterate over all actions
     actions_arr = response_data.get('actions', [])
@@ -381,24 +368,17 @@ def next_step(tid: str, next_step_req: NextStepRequest, db: Session = Depends(ge
             current_subtask.status = SubtaskStatus.COMPLETED
             db.add(current_subtask)
             db.commit()
-            db.refresh(current_subtask)
 
         elif action_type == 'subtask_failed':
-            # Mark plan, task, and thread as failed
+            # Batch all failure status updates into a single commit
             current_plan.status = ThreadTaskPlanStatus.FAILED
             db.add(current_plan)
-            db.commit()
-            db.refresh(current_plan)
 
             task.status = ThreadTaskStatus.FAILED
             db.add(task)
-            db.commit()
-            db.refresh(task)
 
             instance.status = ThreadStatus.STANDBY
             db.add(instance)
-            db.commit()
-            db.refresh(instance)
 
             ai_message = ThreadMessage(
                 thread_id=instance.id,
@@ -409,7 +389,6 @@ def next_step(tid: str, next_step_req: NextStepRequest, db: Session = Depends(ge
             )
             db.add(ai_message)
             db.commit()
-            db.refresh(ai_message)
 
         elif action_type == 'tool_use':
             tool = act['params'].get('tool')
@@ -422,7 +401,6 @@ def next_step(tid: str, next_step_req: NextStepRequest, db: Session = Depends(ge
                 )
                 db.add(memory_entry)
                 db.commit()
-                db.refresh(memory_entry)
 
             elif tool in ['read_pdf', 'fetch_url', 'summarize_youtube_video']:
                 tool_output_text = run_tool_server_side(tool, args)
@@ -432,6 +410,5 @@ def next_step(tid: str, next_step_req: NextStepRequest, db: Session = Depends(ge
                 )
                 db.add(memory_entry)
                 db.commit()
-                db.refresh(memory_entry)
 
     return response_data

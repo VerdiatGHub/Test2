@@ -14,18 +14,20 @@ def get_current_user_dependency(token: str = Depends(oauth2_scheme), db: Session
     try:
         payload = decode_token(token)
         user_id = payload.get('user_id')
+        session_id = payload.get('session_id')
 
-        u_query = select(User).where(User.id == user_id)
-        user = db.exec(u_query).first()
+        # Single JOIN query instead of two separate SELECTs
+        query = select(User, LoginSession).join(
+            LoginSession, LoginSession.user_id == User.id
+        ).where(User.id == user_id, LoginSession.id == session_id)
+        result = db.exec(query).first()
 
-        if not user:
+        if not result:
             raise CustomError(status_code=status.HTTP_401_UNAUTHORIZED, message='Invalid_Token')
 
-        session_id = payload.get('session_id')
-        s_query = select(LoginSession).where(LoginSession.id == session_id)
-        login_session = db.exec(s_query).first()
+        user, login_session = result
 
-        if not login_session or login_session.is_logged_out is True:
+        if login_session.is_logged_out is True:
             raise CustomError(status_code=status.HTTP_401_UNAUTHORIZED, message='Invalid_Token')
 
         if user.is_blocked is True:
@@ -33,5 +35,8 @@ def get_current_user_dependency(token: str = Depends(oauth2_scheme), db: Session
 
         return user
 
+    except CustomError:
+        raise
     except Exception:
         raise CustomError(status_code=status.HTTP_401_UNAUTHORIZED, message='Invalid_Token')
+

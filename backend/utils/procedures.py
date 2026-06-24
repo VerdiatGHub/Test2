@@ -39,14 +39,82 @@ def generate_api_key():
 
 
 def extract_json(raw: str):
-    match = re.search(r"\{.*\}", raw, re.DOTALL)
-    if not match:
+    """Extract the first valid JSON object from a string, handling nested braces correctly."""
+    start_idx = raw.find('{')
+    if start_idx == -1:
         raise ValueError("No valid JSON found in model response.")
-    return json.loads(match.group(0))
+    
+    brace_count = 0
+    in_string = False
+    escape_next = False
+    
+    for i in range(start_idx, len(raw)):
+        char = raw[i]
+        
+        if escape_next:
+            escape_next = False
+            continue
+        
+        if char == '\\':
+            escape_next = True
+            continue
+        
+        if char == '"':
+            in_string = not in_string
+            continue
+        
+        if not in_string:
+            if char == '{':
+                brace_count += 1
+            elif char == '}':
+                brace_count -= 1
+                
+                if brace_count == 0:
+                    json_str = raw[start_idx:i+1]
+                    try:
+                        return json.loads(json_str)
+                    except json.JSONDecodeError as e:
+                        raise ValueError(f"Invalid JSON found in model response: {str(e)}")
+    
+    raise ValueError("No valid JSON found in model response (unbalanced braces).")
 
 
 def extract_json_array(raw: str):
-    match = re.search(r"\[.*\]", raw, re.DOTALL)
-    if not match:
+    """Extract the first valid JSON array from a string, handling nested brackets correctly."""
+    start_idx = raw.find('[')
+    if start_idx == -1:
         raise ValueError("No valid JSON array found in model response.")
-    return json.loads(match.group(0))
+    
+    bracket_count = 0
+    in_string = False
+    escape_next = False
+    
+    for i in range(start_idx, len(raw)):
+        char = raw[i]
+        
+        if escape_next:
+            escape_next = False
+            continue
+        
+        if char == '\\':
+            escape_next = True
+            continue
+        
+        if char == '"':
+            in_string = not in_string
+            continue
+        
+        if not in_string:
+            if char == '[':
+                bracket_count += 1
+            elif char == ']':
+                bracket_count -= 1
+                
+                if bracket_count == 0:
+                    json_str = raw[start_idx:i+1]
+                    try:
+                        return json.loads(json_str)
+                    except json.JSONDecodeError as e:
+                        raise ValueError(f"Invalid JSON array found in model response: {str(e)}")
+    
+    raise ValueError("No valid JSON array found in model response (unbalanced brackets).")

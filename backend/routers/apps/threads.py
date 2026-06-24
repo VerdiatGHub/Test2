@@ -17,7 +17,6 @@ import json
 router = APIRouter(
     prefix='/apps/threads',
     tags=['apps', 'threads'],
-    dependencies=[Depends(get_current_user_dependency)]
 )
 
 
@@ -86,8 +85,6 @@ def create_thread(create_thread_obj: CreateThread, db: Session = Depends(get_ses
         text=create_thread_obj.task,
     )
     db.add(user_message)
-    db.commit()
-    db.refresh(user_message)
 
     response_data['thread_id'] = instance.id
 
@@ -100,8 +97,6 @@ def create_thread(create_thread_obj: CreateThread, db: Session = Depends(get_ses
             extended_thinking_mode=create_thread_obj.extended_thinking_mode or response_data.get('is_extended_thinking_mode_requested', False),
         )
         db.add(thread_task)
-        db.commit()
-        db.refresh(thread_task)
 
         ai_message = ThreadMessage(
             thread_id=instance.id,
@@ -110,13 +105,10 @@ def create_thread(create_thread_obj: CreateThread, db: Session = Depends(get_ses
             text=json.dumps(response_data),
         )
         db.add(ai_message)
-        db.commit()
-        db.refresh(ai_message)
 
         instance.status = ThreadStatus.WORKING
         db.add(instance)
         db.commit()
-        db.refresh(instance)
 
         return response_data
     else:
@@ -128,7 +120,6 @@ def create_thread(create_thread_obj: CreateThread, db: Session = Depends(get_ses
         )
         db.add(ai_message)
         db.commit()
-        db.refresh(ai_message)
 
         return response_data
 
@@ -147,7 +138,6 @@ def update_thread(tid: str, update_obj: UpdateThread, db: Session = Depends(get_
     instance.title = update_obj.title
     db.add(instance)
     db.commit()
-    db.refresh(instance)
 
     return {'message': 'Success'}
 
@@ -169,7 +159,6 @@ def delete_thread(tid: str, db: Session = Depends(get_session), user: User = Dep
     instance.status = ThreadStatus.DELETED
     db.add(instance)
     db.commit()
-    db.refresh(instance)
 
     return {'message': 'Success'}
 
@@ -236,8 +225,6 @@ def cancel_running_task(tid: str, db: Session = Depends(get_session), user: User
 
     instance.status = ThreadStatus.STANDBY
     db.add(instance)
-    db.commit()
-    db.refresh(instance)
 
     running_task = db.exec(select(ThreadTask).where(and_(
         ThreadTask.thread_id == tid,
@@ -247,8 +234,6 @@ def cancel_running_task(tid: str, db: Session = Depends(get_session), user: User
     if running_task:
         running_task.status = ThreadTaskStatus.CANCELED
         db.add(running_task)
-        db.commit()
-        db.refresh(running_task)
 
         db.exec(update(ThreadTaskPlan).where(ThreadTaskPlan.thread_task_id == running_task.id).values(
             status=ThreadTaskPlanStatus.CANCELED,
@@ -267,7 +252,6 @@ def cancel_running_task(tid: str, db: Session = Depends(get_session), user: User
     )
     db.add(ai_message)
     db.commit()
-    db.refresh(ai_message)
 
     return {'message': 'Success'}
 
@@ -327,8 +311,6 @@ def send_message(tid: str, obj: SendMessageObj, db: Session = Depends(get_sessio
         text=obj.text,
     )
     db.add(user_message)
-    db.commit()
-    db.refresh(user_message)
 
     if response_data.get('type') == 'desktop_task':
         thread_task = ThreadTask(
@@ -339,8 +321,6 @@ def send_message(tid: str, obj: SendMessageObj, db: Session = Depends(get_sessio
             extended_thinking_mode=obj.extended_thinking_mode or response_data.get('is_extended_thinking_mode_requested', False),
         )
         db.add(thread_task)
-        db.commit()
-        db.refresh(thread_task)
 
         ai_message = ThreadMessage(
             thread_id=instance.id,
@@ -349,13 +329,10 @@ def send_message(tid: str, obj: SendMessageObj, db: Session = Depends(get_sessio
             text=json.dumps(response_data),
         )
         db.add(ai_message)
-        db.commit()
-        db.refresh(ai_message)
 
         instance.status = ThreadStatus.WORKING
         db.add(instance)
         db.commit()
-        db.refresh(instance)
 
         return response_data
     else:
@@ -367,6 +344,5 @@ def send_message(tid: str, obj: SendMessageObj, db: Session = Depends(get_sessio
         )
         db.add(ai_message)
         db.commit()
-        db.refresh(ai_message)
 
         return response_data

@@ -2,7 +2,7 @@ from sqlmodel import SQLModel, Field, Relationship
 from typing import Optional, List
 import datetime
 from enum import Enum
-from sqlalchemy import Column, Text
+from sqlalchemy import Column, Text, Index
 from utils.procedures import generate_user_id, generate_ver_token, generate_random_number, generate_thread_id
 
 
@@ -105,6 +105,9 @@ class ThreadTaskStatus(str, Enum):
 
 class ThreadTask(SQLModel, table=True):
     __tablename__ = 'thread_tasks'
+    __table_args__ = (
+        Index('ix_thread_tasks_thread_status', 'thread_id', 'status'),
+    )
 
     id: Optional[int] = Field(primary_key=True, index=True, nullable=False)
     thread_id: str = Field(nullable=False, foreign_key='threads.id')
@@ -161,6 +164,9 @@ class SubtaskType(str, Enum):
 
 class PlanSubtask(SQLModel, table=True):
     __tablename__ = 'plan_subtasks'
+    __table_args__ = (
+        Index('ix_plan_subtasks_plan_status', 'thread_task_plan_id', 'status'),
+    )
 
     id: Optional[int] = Field(primary_key=True, index=True, nullable=False)
     thread_task_plan_id: Optional[int] = Field(nullable=True, foreign_key='thread_task_plans.id')
@@ -211,6 +217,10 @@ class ThreadChatFromChoices(str, Enum):
 
 class ThreadMessage(SQLModel, table=True):
     __tablename__ = 'thread_messages'
+    __table_args__ = (
+        Index('ix_thread_messages_task_type', 'thread_task_id', 'thread_chat_type'),
+        Index('ix_thread_messages_thread_created', 'thread_id', 'created_at'),
+    )
 
     id: Optional[int] = Field(primary_key=True, index=True, nullable=False)
     thread_id: str = Field(nullable=False, foreign_key='threads.id')

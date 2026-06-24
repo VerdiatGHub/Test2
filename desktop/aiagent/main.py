@@ -17,6 +17,7 @@ import json
 import asyncio
 import logging
 import ui_extraction
+import hashlib
 
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
@@ -36,6 +37,12 @@ logging.basicConfig(
 
 screenshot_requested = False
 LAST_INTERACTIVE_ELEMENTS = []
+LAST_SCREENSHOT_HASH = None
+LAST_SCREENSHOT_B64 = None
+
+# PyAutoGUI optimization
+pyautogui.PAUSE = 0.05
+pyautogui.FAILSAFE = False
 
 def type_unicode_smart(text: str, delay: float = 0.05) -> None:
     try:
@@ -167,6 +174,7 @@ def focus_app(app_name):
     return False
 
 def take_screenshot_b64():
+    global LAST_SCREENSHOT_HASH, LAST_SCREENSHOT_B64
     with mss.mss() as sct:
         monitor = sct.monitors[0]
         shot = sct.grab(monitor)
@@ -174,7 +182,20 @@ def take_screenshot_b64():
         img = img.resize((1280, 720))
         buffer = BytesIO()
         img.save(buffer, format="PNG")
-        return base64.b64encode(buffer.getvalue()).decode("utf-8")
+        img_bytes = buffer.getvalue()
+        
+        # Compute hash for caching
+        current_hash = hashlib.md5(img_bytes).hexdigest()
+        
+        # Only return new screenshot if it's different
+        if current_hash == LAST_SCREENSHOT_HASH and LAST_SCREENSHOT_B64:
+            return LAST_SCREENSHOT_B64, False  # Return cached, not new
+        
+        # New screenshot - update cache
+        b64_result = base64.b64encode(img_bytes).decode("utf-8")
+        LAST_SCREENSHOT_HASH = current_hash
+        LAST_SCREENSHOT_B64 = b64_result
+        return b64_result, True  # Return new screenshot
 
 def safe_coords(x, y, screen_width, screen_height):
     return max(1, min(screen_width - 1, x)), max(1, min(screen_height - 1, y))
@@ -346,19 +367,22 @@ def get_next_step():
     LAST_INTERACTIVE_ELEMENTS = interactive_elements
     running_apps = ui_extraction.get_running_apps()
 
-    # Automatically trigger screenshot if WebView is present
-    has_webview = any(e.get("type") == "PossibleWebView" for e in interactive_elements)
-    should_send_screenshot = True  # always send so the vision model can verify state and completion
-
+    # Smart screenshot caching - only send if UI changed or explicitly requested
     payload = {
         'current_os': 'MacOS' if platform.system() == 'darwin' else platform.system(),
         'current_interactive_elements': interactive_elements,
         'current_running_apps': running_apps,
     }
 
-    if should_send_screenshot:
-        payload['screenshot_b64'] = take_screenshot_b64()
+    if screenshot_requested:
+        screenshot_b64, is_new = take_screenshot_b64()
+        payload['screenshot_b64'] = screenshot_b64
         screenshot_requested = False
+    else:
+        # Check if UI changed by taking a screenshot and comparing hash
+        screenshot_b64, is_new = take_screenshot_b64()
+        if is_new:
+            payload['screenshot_b64'] = screenshot_b64
 
     try:
         response = requests.post(url, json=payload, headers=headers)
@@ -392,7 +416,7 @@ async def main_loop():
     while True:
         current_subtask_response = get_current_subtask()
         if not current_subtask_response:
-            time.sleep(1.5)
+            time.sleep(0.5)  # Reduced from 1.5s
             continue
 
         if current_subtask_response.get('action') == 'task_completed':
@@ -402,14 +426,14 @@ async def main_loop():
         print("NeuralAgent Next Step Response:", action_response)
 
         if not action_response:
-            time.sleep(1.5)
+            time.sleep(0.5)  # Reduced from 1.5s
             continue
 
         if any(a['action'] in ['task_completed', 'subtask_failed'] for a in action_response.get('actions', [])):
             break
 
         perform_action(action_response)
-        time.sleep(1.0)
+        time.sleep(0.3)  # Reduced from 1.0s
 
 if __name__ == "__main__":
     asyncio.run(main_loop())

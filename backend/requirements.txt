@@ -5,9 +5,9 @@ sqlmodel
 pydantic
 alembic
 sqlalchemy
-psycopg2
-passlib
-bcrypt
+psycopg2==2.9.9
+passlib==1.7.4
+bcrypt==4.0.1
 pyjwt
 boto3
 botocore

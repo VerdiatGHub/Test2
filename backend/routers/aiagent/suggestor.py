@@ -17,7 +17,6 @@ from utils import llm_provider
 router = APIRouter(
     prefix='/aiagent/suggestor',
     tags=['aiagent', 'suggestor'],
-    dependencies=[Depends(get_current_user_dependency)]
 )
 
 
@@ -33,7 +32,7 @@ def get_suggestions(request: SuggestorRequest, db: Session = Depends(get_session
     most_recent_tasks = db.exec(select(ThreadTask).where(and_(
         ThreadTask.thread.has(Thread.user_id == user.id),
         ThreadTask.thread.has(Thread.status != ThreadStatus.DELETED),
-    )).order_by(ThreadTask.created_at.desc()).limit(20)).all()
+    )).order_by(ThreadTask.created_at.desc()).limit(10)).all()
     most_recent_tasks_arr = []
     for recent_task in most_recent_tasks:
         most_recent_tasks_arr.append({
