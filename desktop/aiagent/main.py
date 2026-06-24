@@ -19,6 +19,19 @@ import logging
 import ui_extraction
 import hashlib
 
+# --- DPI awareness: make physical (mss) and logical (pyautogui) pixels agree ---
+# Without this, at Windows display-scaling != 100% (common at 1920x1080), mss grabs
+# physical pixels while pyautogui reports logical ones, so click coords land off.
+if sys.platform == "win32":
+    import ctypes
+    try:
+        ctypes.windll.shcore.SetProcessDpiAwareness(2)  # PER_MONITOR_AWARE_V2
+    except Exception:
+        try:
+            ctypes.windll.user32.SetProcessDPIAware()
+        except Exception:
+            pass
+
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')

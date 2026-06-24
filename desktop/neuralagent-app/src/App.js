@@ -37,6 +37,7 @@ function AppRoutes() {
   const errorMessage = useSelector(state => state.errorMessage);
   const isSuccess = useSelector(state => state.isSuccess);
   const successMsg = useSelector(state => state.successMsg);
+  const hideSidebar = useSelector(state => state.hideSidebar);
 
   return (
     <>
@@ -60,7 +61,7 @@ function AppRoutes() {
           )
         ) : (
           <AppMainContainer>
-            <Sidebar />
+            {!hideSidebar && <Sidebar />}
             <Routes>
               <Route path='/' element={<Home />} />
               <Route path='/threads/:tid' element={<Thread />} />
