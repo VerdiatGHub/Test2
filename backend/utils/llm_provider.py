@@ -34,8 +34,8 @@ def get_llm(agent: str, temperature: float = 0.0, max_tokens: int = None, thinki
             api_version=os.getenv("OPENAI_API_VERSION", "2024-12-01-preview"),
             temperature=temperature,
             max_tokens=max_tokens,
-            timeout=None,
-            max_retries=2
+            timeout=30.0,
+            max_retries=0
         )
     
     elif model_type == "openai":
@@ -43,8 +43,8 @@ def get_llm(agent: str, temperature: float = 0.0, max_tokens: int = None, thinki
             model=model_id,
             temperature=temperature,
             max_tokens=max_tokens,
-            timeout=None,
-            max_retries=2
+            timeout=30.0,
+            max_retries=0
         )
 
     elif model_type == "openrouter":
@@ -52,8 +52,8 @@ def get_llm(agent: str, temperature: float = 0.0, max_tokens: int = None, thinki
             model=model_id,
             temperature=temperature,
             max_tokens=max_tokens,
-            timeout=None,
-            max_retries=2,
+            timeout=30.0,
+            max_retries=0,
             openai_api_key=os.getenv("OPENROUTER_API_KEY"),
             openai_api_base="https://openrouter.io/api/v1",
             default_headers={
@@ -67,8 +67,8 @@ def get_llm(agent: str, temperature: float = 0.0, max_tokens: int = None, thinki
             model=model_id,
             temperature=temperature,
             max_tokens=max_tokens,
-            timeout=None,
-            max_retries=2,
+            timeout=30.0,
+            max_retries=0,
             openai_api_key=os.getenv("NINEROUTER_API_KEY", "9router"),
             openai_api_base=os.getenv("NINEROUTER_API_BASE", "http://localhost:20128/v1"),
         )
@@ -79,16 +79,16 @@ def get_llm(agent: str, temperature: float = 0.0, max_tokens: int = None, thinki
                 model=model_id,
                 temperature=temperature,
                 max_tokens=max_tokens,
-                timeout=None,
-                max_retries=2,
+                timeout=30.0,
+                max_retries=0,
             )
         else:
             return ChatAnthropic(
                 model=model_id,
                 temperature=temperature,
                 max_tokens=max_tokens,
-                timeout=None,
-                max_retries=2,
+                timeout=30.0,
+                max_retries=0,
                 thinking={"type": "enabled", "budget_tokens": 2000},
             )
 
@@ -100,9 +100,9 @@ def get_llm(agent: str, temperature: float = 0.0, max_tokens: int = None, thinki
             }
         }
         boto3_config = Config(
-            connect_timeout=300,
-            read_timeout=300,
-            retries={'max_attempts': 5},
+            connect_timeout=30,
+            read_timeout=60,
+            retries={'max_attempts': 0},
             region_name=os.getenv("BEDROCK_REGION", "us-east-1")
         )
         if thinking_enabled and 'claude' in model_id:
@@ -128,7 +128,7 @@ def get_llm(agent: str, temperature: float = 0.0, max_tokens: int = None, thinki
             model=model_id,
             temperature=temperature,
             max_output_tokens=max_tokens,
-            max_retries=2,
+            max_retries=0,
             google_api_key=os.getenv("GOOGLE_API_KEY"),
         )
 
